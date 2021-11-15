@@ -9,6 +9,8 @@ import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import static org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_MIDDLE;
@@ -21,6 +23,11 @@ public class BoopSorterMod
 
     public BoopSorterMod() {
         MinecraftForge.EVENT_BUS.register(this);
+        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::commonSetup);
+    }
+
+    public void commonSetup(final FMLCommonSetupEvent event) {
+        Network.init();
     }
 
     @Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.FORGE)
@@ -72,7 +79,9 @@ public class BoopSorterMod
                 return false;
             }
 
-            Log("Can be sorted!");
+            var message = new Message("Sorting inventory!");
+            Network.CHANNEL.sendToServer(message);
+
             return true;
         }
 
@@ -97,7 +106,9 @@ public class BoopSorterMod
                 return false;
             }
 
-            Log("Can be sorted!");
+            var message = new Message("Sorting chest!");
+            Network.CHANNEL.sendToServer(message);
+
             return true;
         }
 
