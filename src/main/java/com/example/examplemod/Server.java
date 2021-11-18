@@ -78,6 +78,34 @@ public class Server {
                     inventory.removeItem(itemStack);
                 }
             });
+
+            var inventoryItems = new ArrayList<ItemStack>();
+
+            for (var i = InventoryMenu.INV_SLOT_START; i < InventoryMenu.INV_SLOT_END; i++) {
+                var itemStack = inventory.getItem(i);
+                var itemStackId = itemStack.getDescriptionId();
+                if (itemStackId.equals(airItemId)) {
+                    continue;
+                }
+
+                inventoryItems.add(itemStack);
+            }
+
+            inventoryItems.sort((item1, item2) -> {
+                var item1Id = item1.getDescriptionId();
+                var item2Id = item2.getDescriptionId();
+                var item1IdReversed = new StringBuilder(item1Id).reverse().toString();
+                var item2IdReversed = new StringBuilder(item2Id).reverse().toString();
+                return item1IdReversed.compareTo(item2IdReversed);
+            });
+
+            var slotIndex = InventoryMenu.INV_SLOT_START;
+            for (ItemStack inventoryItem : inventoryItems) {
+                var inventoryItemCopy = inventoryItem.copy();
+                inventory.setItem(slotIndex, inventoryItemCopy);
+                inventory.removeItem(inventoryItem);
+                slotIndex++;
+            }
         });
         context.setPacketHandled(true);
     }
