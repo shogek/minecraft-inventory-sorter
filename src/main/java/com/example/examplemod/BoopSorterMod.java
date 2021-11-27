@@ -42,19 +42,20 @@ public class BoopSorterMod
                 return;
             }
 
-            var screen = event.getGui();
-
-            if (canSortInventoryScreen(screen))
-            {
-                StaticKeyHandler.sortInventory();
-                return;
-            }
-
-            if (canSortChestScreen(screen))
-            {
-                StaticKeyHandler.sortInventory();
-                return;
-            }
+            Network.CHANNEL.sendToServer(new Message("Sorting inventory!"));
+//            var screen = event.getGui();
+//
+//            if (canSortInventoryScreen(screen))
+//            {
+//                StaticKeyHandler.sortInventory();
+//                return;
+//            }
+//
+//            if (canSortChestScreen(screen))
+//            {
+//                StaticKeyHandler.sortInventory();
+//                return;
+//            }
         }
 
         public static boolean canSortInventoryScreen(Screen screen)
@@ -87,6 +88,7 @@ public class BoopSorterMod
 
         public static boolean canSortChestScreen(Screen screen)
         {
+//            screen.
             if (!(screen instanceof ContainerScreen containerScreen))
             {
                 Log("Ignoring because MMB not clicked in a container screen (ex.: Chest).");
