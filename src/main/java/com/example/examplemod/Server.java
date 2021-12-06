@@ -1,5 +1,6 @@
 package com.example.examplemod;
 
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.InventoryMenu;
@@ -24,8 +25,8 @@ public class Server {
             }
 
             switch (sortTarget) {
-                case INVENTORY -> mergeAndSortInventoryItemStacks(player.getInventory());
-                case CONTAINER -> mergeAndSortContainerItemStacks(player.containerMenu);
+                case INVENTORY -> mergeAndSortInventoryItemStacks(player);
+                case CONTAINER -> mergeAndSortContainerItemStacks(player);
                 default -> log("Unknown value of enum 'SortTarget'!");
             }
         });
@@ -36,7 +37,19 @@ public class Server {
         BoopSorterMod.LOGGER.info("[Server] " + message);
     }
 
-    // TODO: Explain me
+    private static boolean isBoops(ServerPlayer player) {
+        var playerName = player.getName().getContents().toLowerCase();
+        return playerName.startsWith("xonism");
+    }
+
+    private static void mergeAndSortInventoryItemStacks(ServerPlayer player) {
+        var inventory = player.getInventory();
+        mergeInventoryItemStacks(inventory);
+
+        var shouldSortByItemName = isBoops(player);
+        sortInventoryItemStacks(inventory, shouldSortByItemName);
+    }
+
     private static void mergeInventoryItemStacks(Inventory inventory) {
         var airItemId = Items.AIR.getDescriptionId();
         var itemsInInventory = new HashMap<String, List<ItemStack>>();
@@ -45,8 +58,8 @@ public class Server {
             var itemStack = inventory.getItem(i);
             var itemId = itemStack.getDescriptionId();
 
+            // Ignore empty slots
             if (itemId.equals(airItemId)) {
-                // Ignore empty slots
                 continue;
             }
 
@@ -55,7 +68,6 @@ public class Server {
             }
 
             if (itemStack.getCount() == itemStack.getMaxStackSize()) {
-                // Ignore maxed out stacks
                 continue;
             }
 
@@ -71,7 +83,7 @@ public class Server {
             itemsInInventory.put(itemId, itemStacks);
         }
 
-        // Ignore single stacks
+        // Ignore single stacks because nothing to merge with
         itemsInInventory.entrySet().removeIf((entry) -> entry.getValue().size() <= 1);
 
         itemsInInventory.forEach((itemId, itemStacks) -> {
@@ -96,12 +108,11 @@ public class Server {
         });
     }
 
-    // TODO: Explain me
-    private static void sortInventoryItemStacks(Inventory inventory) {
+    private static void sortInventoryItemStacks(Inventory inventory, boolean sortByName) {
         var airItemId = Items.AIR.getDescriptionId();
         var inventoryItems = new ArrayList<ItemStack>();
 
-        // TODO: What does this loop do?
+        // Collect items from slots that are not empty
         for (var i = InventoryMenu.INV_SLOT_START; i < InventoryMenu.INV_SLOT_END; i++) {
             var itemStack = inventory.getItem(i);
             var itemStackId = itemStack.getDescriptionId();
@@ -112,29 +123,13 @@ public class Server {
             inventoryItems.add(itemStack);
         }
 
-        // TODO: Add an example
-        inventoryItems.sort((itemStack1, itemStack2) -> {
-            // TODO: Simplify
-            var item1Name = "";
-            var item1 = itemStack1.getItem();
-            if (item1.getRegistryName() == null) {
-                item1Name = item1.getDescriptionId();
-            } else {
-                item1Name = item1.getRegistryName().getPath();
-            }
+        if (sortByName) {
+            inventoryItems.sort(Server::sortItemStacksByName);
+        } else {
+            inventoryItems.sort(Server::sortItemStacksByGroup);
+        }
 
-            var item2Name = "";
-            var item2 = itemStack2.getItem();
-            if (item2.getRegistryName() == null) {
-                item2Name = item2.getDescriptionId();
-            } else {
-                item2Name = item2.getRegistryName().getPath();
-            }
-
-            return item1Name.compareTo(item2Name);
-        });
-
-        // TODO: What does this loop do?
+        // Start from the inventory's beginning and move over items from their respective slots
         var slotIndex = InventoryMenu.INV_SLOT_START;
         for (ItemStack inventoryItem : inventoryItems) {
             var inventoryItemCopy = inventoryItem.copy();
@@ -144,28 +139,20 @@ public class Server {
         }
     }
 
-    private static void mergeAndSortInventoryItemStacks(Inventory inventory) {
-        if (inventory == null) {
-            log("Attempted to sort the inventory but it was `null`!");
-            return;
-        }
-
-        mergeInventoryItemStacks(inventory);
-        sortInventoryItemStacks(inventory);
-    }
-
-    private static void mergeAndSortContainerItemStacks(AbstractContainerMenu containerMenu) {
+    private static void mergeAndSortContainerItemStacks(ServerPlayer player) {
+        var containerMenu = player.containerMenu;
         if (containerMenu == null) {
             log("Attempted to sort the container but it was `null`!");
             return;
         }
 
         mergeContainerItemStacks(containerMenu);
-        sortContainerItemStacks(containerMenu);
+
+        var shouldSortByItemName = isBoops(player);
+        sortContainerItemStacks(containerMenu, shouldSortByItemName);
     }
 
     private static void mergeContainerItemStacks(AbstractContainerMenu containerMenu) {
-        // TODO: Duplicated - move to parent function?
         var containerSlots = containerMenu.slots;
         var containerIndexStart = 0;
         var containerIndexEnd = containerSlots.size() - Inventory.INVENTORY_SIZE;
@@ -179,8 +166,8 @@ public class Server {
             var itemStack = slot.getItem();
             var itemId = itemStack.getDescriptionId();
 
+            // Ignore empty slots
             if (itemId.equals(airItemId)) {
-                // Ignore empty slots
                 continue;
             }
 
@@ -189,7 +176,6 @@ public class Server {
             }
 
             if (itemStack.getCount() == itemStack.getMaxStackSize()) {
-                // Ignore maxed out stacks
                 continue;
             }
 
@@ -205,8 +191,7 @@ public class Server {
             slotsInContainer.put(itemId, slotsWithItem);
         }
 
-        // Ignore single stacks
-        // TODO: Will this work? Or should I change to `.getSlot().getCount()`?
+        // Ignore single stacks because nothing to merge with
         slotsInContainer.entrySet().removeIf((entry) -> entry.getValue().size() <= 1);
 
         slotsInContainer.forEach((itemId, slotsWithItem) -> {
@@ -227,16 +212,12 @@ public class Server {
                     continue;
                 }
 
-                // TODO: Is this ItemStack removal method not leaving any dangling pointers?
-                // TODO: Check if inventory is really empty
-                // TODO: Does `hasItem()` return `true`?
                 itemStack.setCount(0);
             }
         });
     }
 
-    private static void sortContainerItemStacks(AbstractContainerMenu containerMenu) {
-        // TODO: Duplicated - move to parent function?
+    private static void sortContainerItemStacks(AbstractContainerMenu containerMenu, boolean sortByName) {
         var containerSlots = containerMenu.slots;
         var containerIndexStart = 0;
         var containerIndexEnd = containerSlots.size() - Inventory.INVENTORY_SIZE;
@@ -244,6 +225,7 @@ public class Server {
         var airItemId = Items.AIR.getDescriptionId();
         var itemCopies = new ArrayList<ItemStack>();
 
+        // Collect all items from not empty container slots
         for (var i = containerIndexStart; i < containerIndexEnd; i++) {
             var slot = containerSlots.get(i);
             var itemStack = slot.getItem();
@@ -255,43 +237,64 @@ public class Server {
             itemCopies.add(itemStack.copy());
         }
 
+        // Container is empty - nothing to sort
         if (itemCopies.size() < 1) {
             return;
         }
 
-        // TODO: Add an example
-        itemCopies.sort((itemStack1, itemStack2) -> {
-            // TODO: Simplify
-            var item1Name = "";
-            var item1 = itemStack1.getItem();
-            if (item1.getRegistryName() == null) {
-                item1Name = item1.getDescriptionId();
-            } else {
-                item1Name = item1.getRegistryName().getPath();
-            }
+        var containerItemsCount = itemCopies.size();
 
-            var item2Name = "";
-            var item2 = itemStack2.getItem();
-            if (item2.getRegistryName() == null) {
-                item2Name = item2.getDescriptionId();
-            } else {
-                item2Name = item2.getRegistryName().getPath();
-            }
-
-            return item1Name.compareTo(item2Name);
-        });
+        if (sortByName) {
+            itemCopies.sort(Server::sortItemStacksByName);
+        } else {
+            itemCopies.sort(Server::sortItemStacksByGroup);
+        }
 
         var index = containerIndexStart;
         for (ItemStack itemCopy: itemCopies) {
             var slot = containerSlots.get(index);
+            // Delete item in the slot
             slot.getItem().setCount(0);
+            // Place another item in its place
             slot.set(itemCopy);
             index++;
         }
 
-        for (var i = containerIndexStart + itemCopies.size(); i < containerIndexEnd; i++) {
+        // Clear the rest of the container since all the items have been moved to its start
+        for (var i = containerIndexStart + containerItemsCount; i < containerIndexEnd; i++) {
             var slot = containerSlots.get(i);
             slot.getItem().setCount(0);
         }
+    }
+
+    private static int sortItemStacksByName(ItemStack itemStack1, ItemStack itemStack2) {
+        /*
+         * getDescriptionId() = "block.minecraft.iron_ore"
+         * getRegistryName.getPath() = "iron_ore"
+        */
+        var item1 = itemStack1.getItem();
+        var item1Name = item1.getRegistryName() == null
+            ? item1.getDescriptionId()
+            : item1.getRegistryName().getPath();
+
+        var item2 = itemStack2.getItem();
+        var item2Name = item2.getRegistryName() == null
+            ? item2.getDescriptionId()
+            : item2.getRegistryName().getPath();
+
+        return item1Name.compareTo(item2Name);
+    }
+
+    /** For example, all ores will be grouped together, because their item names ("iron_ore") end with "ore". */
+    private static int sortItemStacksByGroup(ItemStack itemStack1, ItemStack itemStack2) {
+        /*
+         * id1 = "block.minecraft.iron_ore"
+         * id2 = "block.minecraft.gold_ore"
+         */
+        var id1 = itemStack1.getDescriptionId();
+        var id2 = itemStack2.getDescriptionId();
+        var id1Reversed = new StringBuilder(id1).reverse().toString();
+        var id2Reversed = new StringBuilder(id2).reverse().toString();
+        return id1Reversed.compareTo(id2Reversed);
     }
 }

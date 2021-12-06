@@ -7,6 +7,8 @@ import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.TextComponent;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.inventory.InventoryMenu;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -20,8 +22,7 @@ import static org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT_CONTROL;
 import static org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_MIDDLE;
 
 @Mod(BoopSorterMod.MOD_ID)
-public class BoopSorterMod
-{
+public class BoopSorterMod {
     public static final Logger LOGGER = LogManager.getLogger();
     public static final String MOD_ID = "boop_sorter_mod";
 
@@ -35,8 +36,7 @@ public class BoopSorterMod
     }
 
     @Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.FORGE)
-    public static class StaticKeyHandler
-    {
+    public static class StaticKeyHandler {
         /** `true` if the keyboard's CTRL key is being held down. */
         private static boolean _isCtrlHeldDown = false;
 
@@ -55,14 +55,17 @@ public class BoopSorterMod
         }
 
         @SubscribeEvent
-        public static void onGuiMouseReleasedEvent(GuiScreenEvent.MouseReleasedEvent.Pre event)
-        {
+        public static void onGuiMouseReleasedPreEvent(GuiScreenEvent.MouseReleasedEvent.Pre event) {
             if (event.getButton() != GLFW_MOUSE_BUTTON_MIDDLE) {
                 log("Ignoring because not MMB clicked.");
                 return;
             }
 
             var screen = event.getGui();
+
+            if (StaticKeyHandler._isCtrlHeldDown) {
+                logInfoToChat(screen);
+            }
 
             if (didUserClickOnInventorySlot(screen)) {
                 var sortInventoryMessage = new Message(SortTargets.INVENTORY);
@@ -76,15 +79,9 @@ public class BoopSorterMod
                 return;
             }
 
-            if (didUserClickOnIronChestModContainerSlot(screen)) {
+            if (didUserClickOnSupportedModContainerSlot(screen)) {
                 var sortContainerMessage = new Message(SortTargets.CONTAINER);
                 Network.CHANNEL.sendToServer(sortContainerMessage);
-                return;
-            }
-
-            if (StaticKeyHandler._isCtrlHeldDown) {
-                StaticKeyHandler._isCtrlHeldDown = false;
-                logInfoToChatAboutContainerScreen(screen);
                 return;
             }
         }
@@ -136,16 +133,95 @@ public class BoopSorterMod
             return true;
         }
 
-        private static boolean didUserClickOnIronChestModContainerSlot(Screen screen) {
-            // This is the best that I could do without adding a hard dependency to the mod itself.
-            return screen.getClass().getSimpleName().equals("IronChestScreen");
+        private static boolean didUserClickOnSupportedModContainerSlot(Screen screen) {
+            var screenName = screen.getClass().getSimpleName();
+
+            // This is the best that I could do without adding a hard dependency to the mods themselves.
+            return screenName.equals("IronChestScreen") || screenName.equals("CrateScreen");
         }
 
         private static void log(String message) {
             BoopSorterMod.LOGGER.info("[KeyHandler] " + message);
         }
 
-        private static void logInfoToChatAboutContainerScreen(Screen screen) {
+        private static void logInfo(String message) {
+            Minecraft.getInstance().gui.getChat().addMessage(new TextComponent(message));
+        }
+
+        private static void logSuccess(String message) {
+            // TODO: Move to an enum
+            final String colorDarkGreen = "\u00A72";
+            final String colorLightGreen = "\u00A7a";
+
+            var text = colorDarkGreen + "Success!" + "\n" + colorLightGreen + message;
+            Minecraft.getInstance().gui.getChat().addMessage(new TextComponent(text));
+        }
+
+        private static void logError(String message) {
+            // TODO: Move to an enum
+            final String colorDarkRed = "\u00A74";
+            final String colorLightRed = "\u00A7c";
+
+            var text = colorDarkRed + "Error!" + "\n" + colorLightRed + message;
+            Minecraft.getInstance().gui.getChat().addMessage(new TextComponent(text));
+        }
+
+        private static void logInfoToChat(Screen screen) {
+            Slot slotUnderMouse;
+
+            if (screen instanceof InventoryScreen inventoryScreen) {
+                slotUnderMouse = inventoryScreen.getSlotUnderMouse();
+            } else if (screen instanceof ContainerScreen containerScreen) {
+                slotUnderMouse = containerScreen.getSlotUnderMouse();
+            } else {
+                logInfoToChatAboutScreen(screen);
+                return;
+            }
+
+            if (slotUnderMouse == null) {
+                logInfoToChatAboutScreen(screen);
+                return;
+            }
+
+            if (!slotUnderMouse.hasItem()) {
+                logInfoToChatAboutScreen(screen);
+                return;
+            }
+
+            logInfoToChatAboutItem(slotUnderMouse.getItem());
+        }
+
+        private static void logInfoToChatAboutItem(ItemStack itemStack) {
+            // TODO: Move to an enum
+            final String colorGold = "\u00A76";
+            final String colorYellow = "\u00A7e";
+            final String colorGrayDark = "\u00A78";
+
+            var descriptionId = itemStack.getDescriptionId();
+            var displayName = itemStack.getDisplayName().getContents();
+            var hoverName = itemStack.getHoverName();
+            var enchantmentTags = itemStack.getEnchantmentTags().getAsString();
+            var simpleClassName = itemStack.getItem().getClass().getSimpleName();
+
+            var registryPathName = "";
+            var registryName = itemStack.getItem().getRegistryName();
+            if (registryName != null) {
+                registryPathName = registryName.getPath();
+            }
+
+            var message =
+                colorGold + "DESCRIPTION ID"        + "\n" + colorYellow + descriptionId    + "\n\n" +
+                colorGold + "SIMPLE CLASS NAME"     + "\n" + colorYellow + simpleClassName  + "\n\n" +
+                colorGold + "DISPLAY NAME"          + "\n" + colorYellow + displayName      + "\n\n" +
+                colorGold + "HOVER NAME"            + "\n" + colorYellow + hoverName        + "\n\n" +
+                colorGold + "REGISTRY PATH NAME"    + "\n" + colorYellow + registryPathName + "\n\n" +
+                colorGold + "ENCHANTMENT TAGS"      + "\n" + colorYellow + enchantmentTags  + "\n" +
+                colorGrayDark + "-----";
+
+            logInfo(message);
+        }
+
+        private static void logInfoToChatAboutScreen(Screen screen) {
             var screenClass = screen.getClass();
 
             var screenSimpleName = screenClass.getSimpleName();
@@ -154,14 +230,20 @@ public class BoopSorterMod
             var screenPackageName = screenClass.getPackageName();
             var screenTypeName = screenClass.getTypeName();
 
-            var message = "\n" +
-                    "\u00A75" + "TypeName:\n" + "\u00A7d" + screenTypeName + "\n\n" +
-                    "\u00A74" + "Name:\n" + "\u00A7c" + screenName + "\n\n" +
-                    "\u00A76" + "SimpleName:\n" + "\u00A7e" + screenSimpleName + "\n\n" +
-                    "\u00A72" + "CanonicalName:\n" + "\u00A7a" + screenCanonicalName + "\n\n" +
-                    "\u00A73" + "PackageName:\n" + "\u00A7b" + screenPackageName;
+            // TODO: Move to an enum
+            final String colorAquaDark = "\u00A73";
+            final String colorAquaLight = "\u00A7b";
+            final String colorGrayDark = "\u00A78";
 
-            Minecraft.getInstance().gui.getChat().addMessage(new TextComponent(message));
+            var message =
+                colorAquaDark + "SIMPLE NAME"       + "\n" + colorAquaLight + screenSimpleName      + "\n\n" +
+                colorAquaDark + "NAME"              + "\n" + colorAquaLight + screenName            + "\n\n" +
+                colorAquaDark + "TYPE NAME"         + "\n" + colorAquaLight + screenTypeName        + "\n\n" +
+                colorAquaDark + "CANONICAL NAME"    + "\n" + colorAquaLight + screenCanonicalName   + "\n\n" +
+                colorAquaDark + "PACKAGE NAME"      + "\n" + colorAquaLight + screenPackageName     + "\n" +
+                colorGrayDark + "-----";
+
+            logInfo(message);
         }
     }
 }
