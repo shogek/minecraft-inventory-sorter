@@ -1,5 +1,9 @@
 package com.example.examplemod;
 
+import com.example.examplemod.commands.DebugDisableCommand;
+import com.example.examplemod.commands.DebugEnableCommand;
+import com.example.examplemod.commands.SortAlphabeticallyCommand;
+import com.example.examplemod.commands.SortCategoricallyCommand;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
@@ -11,6 +15,7 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
@@ -39,6 +44,15 @@ public class BoopSorterMod {
     public static class StaticKeyHandler {
         /** `true` if the keyboard's CTRL key is being held down. */
         private static boolean _isCtrlHeldDown = false;
+
+        @SubscribeEvent
+        public static void onCommandsRegister(RegisterCommandsEvent event) {
+            var dispatcher = event.getDispatcher();
+            new DebugEnableCommand(dispatcher);
+            new DebugDisableCommand(dispatcher);
+            new SortAlphabeticallyCommand(dispatcher);
+            new SortCategoricallyCommand(dispatcher);
+        }
 
         @SubscribeEvent
         public static void onKeyboardKeyPressedPostEvent(GuiScreenEvent.KeyboardKeyPressedEvent.Post event) {
@@ -87,22 +101,19 @@ public class BoopSorterMod {
         }
 
         private static boolean didUserClickOnInventorySlot(Screen screen) {
-            if (!(screen instanceof InventoryScreen inventoryScreen))
-            {
+            if (!(screen instanceof InventoryScreen inventoryScreen)) {
                 log("Ignoring because MMB not clicked in the inventory screen.");
                 return false;
             }
 
             var slot = inventoryScreen.getSlotUnderMouse();
-            if (slot == null)
-            {
+            if (slot == null) {
                 log("Ignoring because MMB not clicked on an inventory slot.");
                 return false;
             }
 
             var slotIndex = slot.getSlotIndex();
-            if (slotIndex < InventoryMenu.INV_SLOT_START || slotIndex >= InventoryMenu.INV_SLOT_END)
-            {
+            if (slotIndex < InventoryMenu.INV_SLOT_START || slotIndex >= InventoryMenu.INV_SLOT_END) {
                 log("Ignoring because MMB not clicked on a basic inventory slot.");
                 return false;
             }
@@ -111,21 +122,18 @@ public class BoopSorterMod {
         }
 
         private static boolean didUserClickOnContainerSlot(Screen screen) {
-            if (!(screen instanceof ContainerScreen containerScreen))
-            {
+            if (!(screen instanceof ContainerScreen containerScreen)) {
                 log("Ignoring because MMB not clicked in a container screen (ex.: Chest, Shulker box).");
                 return false;
             }
 
             var slot = containerScreen.getSlotUnderMouse();
-            if (slot == null)
-            {
+            if (slot == null) {
                 log("Ignoring because MMB not clicked on a slot.");
                 return false;
             }
 
-            if (!(slot.container instanceof SimpleContainer))
-            {
+            if (!(slot.container instanceof SimpleContainer)) {
                 log("Ignoring because MMB not clicked on a container's slot.");
                 return false;
             }
