@@ -1,5 +1,6 @@
 package com.example.examplemod.commands;
 
+import com.example.examplemod.BoopSorterMod;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
@@ -28,9 +29,12 @@ public class DebugEnableCommand {
     }
 
     private static int getCommandHandler(CommandContext<CommandSourceStack> commandContext) {
-        // TODO: Implement me
-        var message = new TextComponent("ENABLED");
+        BoopSorterMod.enableLogging();
+
+        var emoji = "\u0028\u2299\u005f\u0028\u2299\u005f\u2299\u0029\u005f\u2299\u0029"; // (⊙_(⊙_⊙)_⊙)
+        var message = new TextComponent(emoji + " " + "DEBUG MODE ENABLED");
         commandContext.getSource().sendSuccess(message, true);
+
         return 1;
     }
 }

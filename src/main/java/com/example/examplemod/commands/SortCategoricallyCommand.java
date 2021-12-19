@@ -1,5 +1,6 @@
 package com.example.examplemod.commands;
 
+import com.example.examplemod.BoopSorterMod;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
@@ -28,9 +29,12 @@ public class SortCategoricallyCommand {
     }
 
     private static int getCommandHandler(CommandContext<CommandSourceStack> commandContext) {
-        // TODO: Implement me
-        var message = new TextComponent("SORTING CATEGORICALLY");
+        BoopSorterMod.setSortingByCategory();
+
+        var emoji = "\u1566\u0028\u00f2\u005f\u00f3\u02c7\u0029\u1564"; // ᕦ(ò_óˇ)ᕤ
+        var message = new TextComponent(emoji + " " + "SORTING CATEGORICALLY");
         commandContext.getSource().sendSuccess(message, true);
+
         return 1;
     }
 }

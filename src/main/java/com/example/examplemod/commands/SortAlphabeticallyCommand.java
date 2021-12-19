@@ -1,5 +1,6 @@
 package com.example.examplemod.commands;
 
+import com.example.examplemod.BoopSorterMod;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
@@ -28,9 +29,12 @@ public class SortAlphabeticallyCommand {
     }
 
     private static int getCommandHandler(CommandContext<CommandSourceStack> commandContext) {
-        // TODO: Implement me
-        var message = new TextComponent("SORTING ALPHABETICALLY");
+        BoopSorterMod.setSortingByAlphabet();
+
+        var emoji = "\u273f\u25e0\u203f\u25e0"; // ✿◠‿◠
+        var message = new TextComponent(emoji + " " + "SORTING ALPHABETICALLY");
         commandContext.getSource().sendSuccess(message, true);
+
         return 1;
     }
 }

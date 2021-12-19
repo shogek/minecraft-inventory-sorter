@@ -31,9 +31,27 @@ public class BoopSorterMod {
     public static final Logger LOGGER = LogManager.getLogger();
     public static final String MOD_ID = "boop_sorter_mod";
 
+    private static final State _state = new State();
+
     public BoopSorterMod() {
         MinecraftForge.EVENT_BUS.register(this);
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::commonSetup);
+    }
+
+    public static void enableLogging() {
+        _state.isLoggingEnabled = true;
+    }
+
+    public static void disableLogging() {
+        _state.isLoggingEnabled = false;
+    }
+
+    public static void setSortingByCategory() {
+        _state.shouldSortByCategory = true;
+    }
+
+    public static void setSortingByAlphabet() {
+        _state.shouldSortByCategory = false;
     }
 
     public void commonSetup(final FMLCommonSetupEvent event) {
@@ -82,19 +100,19 @@ public class BoopSorterMod {
             }
 
             if (didUserClickOnInventorySlot(screen)) {
-                var sortInventoryMessage = new Message(SortTargets.INVENTORY);
+                var sortInventoryMessage = new Message(SortTargets.INVENTORY, _state.shouldSortByCategory);
                 Network.CHANNEL.sendToServer(sortInventoryMessage);
                 return;
             }
 
             if (didUserClickOnContainerSlot(screen)) {
-                var sortContainerMessage = new Message(SortTargets.CONTAINER);
+                var sortContainerMessage = new Message(SortTargets.CONTAINER, _state.shouldSortByCategory);
                 Network.CHANNEL.sendToServer(sortContainerMessage);
                 return;
             }
 
             if (didUserClickOnSupportedModContainerSlot(screen)) {
-                var sortContainerMessage = new Message(SortTargets.CONTAINER);
+                var sortContainerMessage = new Message(SortTargets.CONTAINER, _state.shouldSortByCategory);
                 Network.CHANNEL.sendToServer(sortContainerMessage);
                 return;
             }
