@@ -4,6 +4,8 @@ import com.example.examplemod.commands.DebugDisableCommand;
 import com.example.examplemod.commands.DebugEnableCommand;
 import com.example.examplemod.commands.SortAlphabeticallyCommand;
 import com.example.examplemod.commands.SortCategoricallyCommand;
+import com.example.examplemod.messages.SortItemsMessage;
+import com.example.examplemod.messages.ReplaceDestroyedItemMessage;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
@@ -17,12 +19,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.EntityTeleportEvent;
-import net.minecraftforge.event.entity.living.LivingEquipmentChangeEvent;
 import net.minecraftforge.event.entity.player.PlayerDestroyItemEvent;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent;
-import net.minecraftforge.event.world.BlockEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
@@ -35,11 +32,10 @@ import static org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_MIDDLE;
 
 @Mod(BoopSorterMod.MOD_ID)
 public class BoopSorterMod {
-    public static final Logger LOGGER = LogManager.getLogger();
     public static final String MOD_ID = "boop_sorter_mod";
+    public static final Logger LOGGER = LogManager.getLogger();
 
     private static final State _state = new State();
-    private static NewMessage _newMessage = null;
 
     public BoopSorterMod() {
         MinecraftForge.EVENT_BUS.register(this);
@@ -72,87 +68,6 @@ public class BoopSorterMod {
         private static boolean _isCtrlHeldDown = false;
 
         @SubscribeEvent
-        public static void onPlayerRightClickedBlock(PlayerInteractEvent.RightClickBlock event) {
-            // TODO: What is this?
-            var useBlock = event.getUseBlock();
-            // TODO: What is this?
-            var useItem = event.getUseItem();
-
-            var test = "a";
-        }
-
-        @SubscribeEvent
-        public static void RenameMeToo(LivingEquipmentChangeEvent event) {
-            // TODO: What is this?
-            var fromItem = event.getFrom();
-            // TODO: What is this?
-            var toItem = event.getFrom();
-        }
-
-        @SubscribeEvent
-        public static void RenameMe(BlockEvent.BreakEvent event) {
-            // TODO: Is this the block that 'broke'?
-            var block = event.getState().getBlock();
-            // TODO: What is this?
-            var interactionHand = event.getPlayer().getUsedItemHand();
-            // TODO: What is this?
-            var itemInHand = event.getPlayer().getItemInHand(interactionHand);
-            var what = "a";
-        }
-
-        @SubscribeEvent
-        public static void onTick(TickEvent.WorldTickEvent event) {
-            if (event.phase != TickEvent.Phase.END) {
-                return;
-            }
-
-            // TODO: Make this more readable
-            if (_newMessage != null) {
-                Network.CHANNEL.sendToServer(_newMessage);
-                _newMessage = null;
-            }
-        }
-
-        @SubscribeEvent
-        public static void onBlockPlaceEvent(BlockEvent.EntityPlaceEvent event) {
-            var entity = event.getEntity();
-            if (!(entity instanceof Player player)) {
-                return;
-            }
-
-            var mainHandItem = player.getMainHandItem();
-            if (mainHandItem.getCount() > 1) {
-                return;
-            }
-
-            var usedItemId = mainHandItem.getDescriptionId();
-            // TODO: Make this more readable
-            _newMessage = new NewMessage(usedItemId);
-        }
-
-        /** TODO: Try replacing the item that will break with a new one if found in inventory */
-//        TODO: Can I lower the priority to actually catch it post factum?
-        @SubscribeEvent
-        public static void onPlayerDestroyedItemEvent(PlayerDestroyItemEvent event) {
-            /*
-                SOURCE: https://forums.minecraftforge.net/topic/44451-solved-item-break-handler/
-             */
-            // TODO: Is this the hand that is using the item?
-            var interactionHand = event.getHand();
-            // TODO: Is this the item that will be lost?
-            var getItemInHand = event.getOriginal();
-
-            // TODO: Try this?
-            //getItemInHand.onDestroyed();
-
-            var test = "a";
-        }
-
-
-
-
-
-        @SubscribeEvent
         public static void onCommandsRegister(RegisterCommandsEvent event) {
             var dispatcher = event.getDispatcher();
             new DebugEnableCommand(dispatcher);
@@ -176,6 +91,20 @@ public class BoopSorterMod {
         }
 
         @SubscribeEvent
+        public static void onPlayerDestroyedItemEvent(PlayerDestroyItemEvent event) {
+            var entity = event.getEntity();
+            if (!(entity instanceof Player)) {
+                return;
+            }
+
+            var itemInHand = event.getOriginal();
+            var itemInHandId = itemInHand.getDescriptionId();
+
+            var message = new ReplaceDestroyedItemMessage(itemInHandId);
+            Network.CHANNEL.sendToServer(message);
+        }
+
+        @SubscribeEvent
         public static void onGuiMouseReleasedPreEvent(GuiScreenEvent.MouseReleasedEvent.Pre event) {
             if (event.getButton() != GLFW_MOUSE_BUTTON_MIDDLE) {
                 log("Ignoring because not MMB clicked.");
@@ -189,19 +118,19 @@ public class BoopSorterMod {
             }
 
             if (didUserClickOnInventorySlot(screen)) {
-                var sortInventoryMessage = new Message(SortTargets.INVENTORY, _state.shouldSortByCategory);
+                var sortInventoryMessage = new SortItemsMessage(SortTargets.INVENTORY, _state.shouldSortByCategory);
                 Network.CHANNEL.sendToServer(sortInventoryMessage);
                 return;
             }
 
             if (didUserClickOnContainerSlot(screen)) {
-                var sortContainerMessage = new Message(SortTargets.CONTAINER, _state.shouldSortByCategory);
+                var sortContainerMessage = new SortItemsMessage(SortTargets.CONTAINER, _state.shouldSortByCategory);
                 Network.CHANNEL.sendToServer(sortContainerMessage);
                 return;
             }
 
             if (didUserClickOnSupportedModContainerSlot(screen)) {
-                var sortContainerMessage = new Message(SortTargets.CONTAINER, _state.shouldSortByCategory);
+                var sortContainerMessage = new SortItemsMessage(SortTargets.CONTAINER, _state.shouldSortByCategory);
                 Network.CHANNEL.sendToServer(sortContainerMessage);
                 return;
             }
@@ -256,7 +185,11 @@ public class BoopSorterMod {
         }
 
         private static void log(String message) {
-            BoopSorterMod.LOGGER.info("[KeyHandler] " + message);
+            if (!_state.isLoggingEnabled) {
+                return;
+            }
+
+            BoopSorterMod.LOGGER.info("[BoopSorterMod] " + message);
         }
 
         private static void logInfo(String message) {
