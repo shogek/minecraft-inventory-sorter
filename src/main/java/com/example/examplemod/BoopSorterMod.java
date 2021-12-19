@@ -225,7 +225,7 @@ public class BoopSorterMod {
 
             var descriptionId = itemStack.getDescriptionId();
             var displayName = itemStack.getDisplayName().getContents();
-            var hoverName = itemStack.getHoverName();
+            var hoverName = itemStack.getHoverName().getContents();
             var enchantmentTags = itemStack.getEnchantmentTags().getAsString();
             var simpleClassName = itemStack.getItem().getClass().getSimpleName();
 
@@ -236,6 +236,7 @@ public class BoopSorterMod {
             }
 
             var message =
+                colorGrayDark + "-----" + "\n" +
                 colorGold + "DESCRIPTION ID"        + "\n" + colorYellow + descriptionId    + "\n\n" +
                 colorGold + "SIMPLE CLASS NAME"     + "\n" + colorYellow + simpleClassName  + "\n\n" +
                 colorGold + "DISPLAY NAME"          + "\n" + colorYellow + displayName      + "\n\n" +
@@ -262,6 +263,7 @@ public class BoopSorterMod {
             final String colorGrayDark = "\u00A78";
 
             var message =
+                colorGrayDark + "-----" + "\n" +
                 colorAquaDark + "SIMPLE NAME"       + "\n" + colorAquaLight + screenSimpleName      + "\n\n" +
                 colorAquaDark + "NAME"              + "\n" + colorAquaLight + screenName            + "\n\n" +
                 colorAquaDark + "TYPE NAME"         + "\n" + colorAquaLight + screenTypeName        + "\n\n" +
