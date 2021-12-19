@@ -13,6 +13,35 @@ import java.util.*;
 import java.util.function.Supplier;
 
 public class Server {
+    public static void onNewMessage(NewMessage message, Supplier<NetworkEvent.Context> contextSupplier) {
+        var context = contextSupplier.get();
+
+        context.enqueueWork(() -> {
+            var player = context.getSender();
+            if (player == null) {
+                return;
+            }
+
+            var usedItemId = message.getUsedItemDescriptionId();
+            var inventory = player.getInventory();
+            for (var i = InventoryMenu.INV_SLOT_START; i < InventoryMenu.INV_SLOT_END; i++) {
+                var inventoryItemStack = inventory.getItem(i);
+                var inventoryItemStackId = inventoryItemStack.getDescriptionId();
+
+                if (!usedItemId.equals(inventoryItemStackId)) {
+                    continue;
+                }
+
+                var itemStackCopy = inventoryItemStack.copy();
+                inventory.removeItem(inventoryItemStack);
+                var interactionHand = player.getUsedItemHand();
+                player.setItemInHand(interactionHand, itemStackCopy);
+            }
+        });
+
+        context.setPacketHandled(true);
+    }
+
     public static void onMessage(Message message, Supplier<NetworkEvent.Context> contextSupplier) {
         var context = contextSupplier.get();
         var sortTarget = message.getSortTarget();
@@ -30,6 +59,7 @@ public class Server {
                 default -> log("Unknown value of enum 'SortTarget'!");
             }
         });
+
         context.setPacketHandled(true);
     }
 

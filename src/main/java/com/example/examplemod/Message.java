@@ -5,7 +5,7 @@ import io.netty.buffer.ByteBuf;
 import java.nio.charset.Charset;
 
 public class Message {
-    public static final Charset DEFAULT_CHARSET = Charset.defaultCharset();
+    private static final Charset DEFAULT_CHARSET = Charset.defaultCharset();
     private static final String SEPARATOR = " ";
     private SortTargets _sortTarget;
     private boolean _shouldSortByCategory;
@@ -27,8 +27,8 @@ public class Message {
     }
 
     void encode(ByteBuf buffer) {
-        var encoded = this._sortTarget.name() + SEPARATOR + this._shouldSortByCategory;
-        buffer.writeCharSequence(encoded, DEFAULT_CHARSET);
+        var toEncode = this._sortTarget.name() + SEPARATOR + this._shouldSortByCategory;
+        buffer.writeCharSequence(toEncode, DEFAULT_CHARSET);
     }
 
     static Message decode(ByteBuf buffer) {
