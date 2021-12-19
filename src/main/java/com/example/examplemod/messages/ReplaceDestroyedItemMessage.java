@@ -9,7 +9,6 @@ public class ReplaceDestroyedItemMessage {
 
     private final String _destroyedItemId;
 
-    /** @param destroyedItemId `getDescriptionId()` of an item that needs to be replaced in current hand. */
     public ReplaceDestroyedItemMessage(String destroyedItemId) {
         this._destroyedItemId = destroyedItemId;
     }

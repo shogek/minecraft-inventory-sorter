@@ -1,16 +1,37 @@
 # minecraft-inventory-sorter
-[Build for Forge 1.17.1]  
+[Built for Forge 1.17.1]  
 [No external dependencies]  
-***Sort you inventory or chests by clicking the middle mouse button (MMB)!***  
 
-## How to use the mod
+## Features
+### Inventory and chest sorting
 1. Open the inventory (`E`) or any chest
-1. Hover over a slot
-1. Click the middle mouse button (`MMB`)
+2. Hover over a slot
+3. Click the middle mouse button (`MMB`)
 
-## How to print debug information to the chat
-1. Hold `CTRL`
-1. Click the middle mouse button (`MMB`) either on an item or in a container
+### Broken item and depleted stack replacement
+Broke your tool or depleted a stack?  
+The mod will search your inventory and place an identical tool or item stack in to the active hand.
+
+## Supported commands
+### `boops debug enable`
+Enables logging.  
+Hold `CTRL` and click the middle mouse button (`MMB`) on...  
+
+1. an item in your inventory  
+2. an unknown container's UI  
+
+...to print information about in to the chat.
+### `boops debug disable`
+You guessed it.  
+
+### `boops sorting alphabetically`
+Sorts the items by their names.
+
+### `boops sorting categorically`
+Sorts the items by their reversed names.  
+Normal: `"block.minecraft.iron_ore"`  
+Reversed: `"ero_nori.tfarcenim.kcolb"`  
+This groups the items by their categories, in this case, by ores.
 
 ## How to build the mod and where to put it
 1. Open source folder

@@ -7,6 +7,7 @@ import net.minecraftforge.fmllegacy.network.NetworkEvent;
 import java.util.function.Supplier;
 
 public class ReplaceDestroyedItemHandler {
+    /** Replace the recently (broken tool/depleted stack) with an identical one from the player's inventory (if found). */
     public static void handle(ReplaceDestroyedItemMessage message, Supplier<NetworkEvent.Context> contextSupplier) {
         var context = contextSupplier.get();
 
