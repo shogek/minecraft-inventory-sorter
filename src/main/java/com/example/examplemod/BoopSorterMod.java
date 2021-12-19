@@ -4,18 +4,22 @@ import com.example.examplemod.commands.DebugDisableCommand;
 import com.example.examplemod.commands.DebugEnableCommand;
 import com.example.examplemod.commands.SortAlphabeticallyCommand;
 import com.example.examplemod.commands.SortCategoricallyCommand;
+import com.example.examplemod.messages.SortItemsMessage;
+import com.example.examplemod.messages.ReplaceDestroyedItemMessage;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.TextComponent;
 import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
+import net.minecraftforge.event.entity.player.PlayerDestroyItemEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
@@ -28,8 +32,8 @@ import static org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_MIDDLE;
 
 @Mod(BoopSorterMod.MOD_ID)
 public class BoopSorterMod {
-    public static final Logger LOGGER = LogManager.getLogger();
     public static final String MOD_ID = "boop_sorter_mod";
+    public static final Logger LOGGER = LogManager.getLogger();
 
     private static final State _state = new State();
 
@@ -87,6 +91,20 @@ public class BoopSorterMod {
         }
 
         @SubscribeEvent
+        public static void onPlayerDestroyedItemEvent(PlayerDestroyItemEvent event) {
+            var entity = event.getEntity();
+            if (!(entity instanceof Player)) {
+                return;
+            }
+
+            var itemInHand = event.getOriginal();
+            var itemInHandId = itemInHand.getDescriptionId();
+
+            var message = new ReplaceDestroyedItemMessage(itemInHandId);
+            Network.CHANNEL.sendToServer(message);
+        }
+
+        @SubscribeEvent
         public static void onGuiMouseReleasedPreEvent(GuiScreenEvent.MouseReleasedEvent.Pre event) {
             if (event.getButton() != GLFW_MOUSE_BUTTON_MIDDLE) {
                 log("Ignoring because not MMB clicked.");
@@ -100,19 +118,19 @@ public class BoopSorterMod {
             }
 
             if (didUserClickOnInventorySlot(screen)) {
-                var sortInventoryMessage = new Message(SortTargets.INVENTORY, _state.shouldSortByCategory);
+                var sortInventoryMessage = new SortItemsMessage(SortTargets.INVENTORY, _state.shouldSortByCategory);
                 Network.CHANNEL.sendToServer(sortInventoryMessage);
                 return;
             }
 
             if (didUserClickOnContainerSlot(screen)) {
-                var sortContainerMessage = new Message(SortTargets.CONTAINER, _state.shouldSortByCategory);
+                var sortContainerMessage = new SortItemsMessage(SortTargets.CONTAINER, _state.shouldSortByCategory);
                 Network.CHANNEL.sendToServer(sortContainerMessage);
                 return;
             }
 
             if (didUserClickOnSupportedModContainerSlot(screen)) {
-                var sortContainerMessage = new Message(SortTargets.CONTAINER, _state.shouldSortByCategory);
+                var sortContainerMessage = new SortItemsMessage(SortTargets.CONTAINER, _state.shouldSortByCategory);
                 Network.CHANNEL.sendToServer(sortContainerMessage);
                 return;
             }
@@ -167,7 +185,11 @@ public class BoopSorterMod {
         }
 
         private static void log(String message) {
-            BoopSorterMod.LOGGER.info("[KeyHandler] " + message);
+            if (!_state.isLoggingEnabled) {
+                return;
+            }
+
+            BoopSorterMod.LOGGER.info("[BoopSorterMod] " + message);
         }
 
         private static void logInfo(String message) {

@@ -1,5 +1,7 @@
-package com.example.examplemod;
+package com.example.examplemod.handlers;
 
+import com.example.examplemod.BoopSorterMod;
+import com.example.examplemod.messages.SortItemsMessage;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -9,11 +11,13 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraftforge.fmllegacy.network.NetworkEvent;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.function.Supplier;
 
-public class Server {
-    public static void onMessage(Message message, Supplier<NetworkEvent.Context> contextSupplier) {
+public class SortItemsHandler {
+    public static void handle(SortItemsMessage message, Supplier<NetworkEvent.Context> contextSupplier) {
         var context = contextSupplier.get();
         var sortTarget = message.getSortTarget();
         var shouldSortByCategory = message.shouldSortByCategory();
@@ -30,6 +34,7 @@ public class Server {
                 default -> log("Unknown value of enum 'SortTarget'!");
             }
         });
+
         context.setPacketHandled(true);
     }
 
@@ -117,9 +122,9 @@ public class Server {
         }
 
         if (shouldSortByCategory) {
-            inventoryItems.sort(Server::compareItemStacksByReversedNamed);
+            inventoryItems.sort(SortItemsHandler::compareItemStacksByReversedNamed);
         } else {
-            inventoryItems.sort(Server::compareItemStacksByName);
+            inventoryItems.sort(SortItemsHandler::compareItemStacksByName);
         }
 
         // Start from the inventory's beginning and move over items from their respective slots
@@ -236,9 +241,9 @@ public class Server {
         var containerItemsCount = itemCopies.size();
 
         if (shouldSortByCategory) {
-            itemCopies.sort(Server::compareItemStacksByReversedNamed);
+            itemCopies.sort(SortItemsHandler::compareItemStacksByReversedNamed);
         } else {
-            itemCopies.sort(Server::compareItemStacksByName);
+            itemCopies.sort(SortItemsHandler::compareItemStacksByName);
         }
 
         var index = containerIndexStart;
@@ -262,16 +267,16 @@ public class Server {
         /*
          * getDescriptionId() = "block.minecraft.iron_ore"
          * getRegistryName.getPath() = "iron_ore"
-        */
+         */
         var item1 = itemStack1.getItem();
         var item1Name = item1.getRegistryName() == null
-            ? item1.getDescriptionId()
-            : item1.getRegistryName().getPath();
+                ? item1.getDescriptionId()
+                : item1.getRegistryName().getPath();
 
         var item2 = itemStack2.getItem();
         var item2Name = item2.getRegistryName() == null
-            ? item2.getDescriptionId()
-            : item2.getRegistryName().getPath();
+                ? item2.getDescriptionId()
+                : item2.getRegistryName().getPath();
 
         var comparison = item1Name.compareTo(item2Name);
         if (comparison == 0) {
