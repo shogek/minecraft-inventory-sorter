@@ -16,7 +16,7 @@ public class Server {
     public static void onMessage(Message message, Supplier<NetworkEvent.Context> contextSupplier) {
         var context = contextSupplier.get();
         var sortTarget = message.getSortTarget();
-        log("User requested to sort: " + sortTarget);
+        var shouldSortByCategory = message.shouldSortByCategory();
 
         context.enqueueWork(() -> {
             var player = context.getSender();
@@ -25,8 +25,8 @@ public class Server {
             }
 
             switch (sortTarget) {
-                case INVENTORY -> mergeAndSortInventoryItemStacks(player);
-                case CONTAINER -> mergeAndSortContainerItemStacks(player);
+                case INVENTORY -> mergeAndSortInventoryItemStacks(player, shouldSortByCategory);
+                case CONTAINER -> mergeAndSortContainerItemStacks(player, shouldSortByCategory);
                 default -> log("Unknown value of enum 'SortTarget'!");
             }
         });
@@ -37,17 +37,10 @@ public class Server {
         BoopSorterMod.LOGGER.info("[Server] " + message);
     }
 
-    private static boolean isBoops(ServerPlayer player) {
-        var playerName = player.getName().getContents().toLowerCase();
-        return playerName.startsWith("xonism");
-    }
-
-    private static void mergeAndSortInventoryItemStacks(ServerPlayer player) {
+    private static void mergeAndSortInventoryItemStacks(ServerPlayer player, boolean shouldSortByCategory) {
         var inventory = player.getInventory();
         mergeInventoryItemStacks(inventory);
-
-        var shouldSortByItemName = isBoops(player);
-        sortInventoryItemStacks(inventory, shouldSortByItemName);
+        sortInventoryItemStacks(inventory, shouldSortByCategory);
     }
 
     private static void mergeInventoryItemStacks(Inventory inventory) {
@@ -108,7 +101,7 @@ public class Server {
         });
     }
 
-    private static void sortInventoryItemStacks(Inventory inventory, boolean sortByName) {
+    private static void sortInventoryItemStacks(Inventory inventory, boolean shouldSortByCategory) {
         var airItemId = Items.AIR.getDescriptionId();
         var inventoryItems = new ArrayList<ItemStack>();
 
@@ -123,10 +116,10 @@ public class Server {
             inventoryItems.add(itemStack);
         }
 
-        if (sortByName) {
-            inventoryItems.sort(Server::sortItemStacksByName);
+        if (shouldSortByCategory) {
+            inventoryItems.sort(Server::compareItemStacksByReversedNamed);
         } else {
-            inventoryItems.sort(Server::sortItemStacksByGroup);
+            inventoryItems.sort(Server::compareItemStacksByName);
         }
 
         // Start from the inventory's beginning and move over items from their respective slots
@@ -139,7 +132,7 @@ public class Server {
         }
     }
 
-    private static void mergeAndSortContainerItemStacks(ServerPlayer player) {
+    private static void mergeAndSortContainerItemStacks(ServerPlayer player, boolean shouldSortByCategory) {
         var containerMenu = player.containerMenu;
         if (containerMenu == null) {
             log("Attempted to sort the container but it was `null`!");
@@ -147,9 +140,7 @@ public class Server {
         }
 
         mergeContainerItemStacks(containerMenu);
-
-        var shouldSortByItemName = isBoops(player);
-        sortContainerItemStacks(containerMenu, shouldSortByItemName);
+        sortContainerItemStacks(containerMenu, shouldSortByCategory);
     }
 
     private static void mergeContainerItemStacks(AbstractContainerMenu containerMenu) {
@@ -217,7 +208,7 @@ public class Server {
         });
     }
 
-    private static void sortContainerItemStacks(AbstractContainerMenu containerMenu, boolean sortByName) {
+    private static void sortContainerItemStacks(AbstractContainerMenu containerMenu, boolean shouldSortByCategory) {
         var containerSlots = containerMenu.slots;
         var containerIndexStart = 0;
         var containerIndexEnd = containerSlots.size() - Inventory.INVENTORY_SIZE;
@@ -244,10 +235,10 @@ public class Server {
 
         var containerItemsCount = itemCopies.size();
 
-        if (sortByName) {
-            itemCopies.sort(Server::sortItemStacksByName);
+        if (shouldSortByCategory) {
+            itemCopies.sort(Server::compareItemStacksByReversedNamed);
         } else {
-            itemCopies.sort(Server::sortItemStacksByGroup);
+            itemCopies.sort(Server::compareItemStacksByName);
         }
 
         var index = containerIndexStart;
@@ -267,7 +258,7 @@ public class Server {
         }
     }
 
-    private static int sortItemStacksByName(ItemStack itemStack1, ItemStack itemStack2) {
+    private static int compareItemStacksByName(ItemStack itemStack1, ItemStack itemStack2) {
         /*
          * getDescriptionId() = "block.minecraft.iron_ore"
          * getRegistryName.getPath() = "iron_ore"
@@ -282,11 +273,17 @@ public class Server {
             ? item2.getDescriptionId()
             : item2.getRegistryName().getPath();
 
-        return item1Name.compareTo(item2Name);
+        var comparison = item1Name.compareTo(item2Name);
+        if (comparison == 0) {
+            // We're comparing item stacks of the same item
+            return compareItemStacksByQuantity(itemStack1, itemStack2);
+        }
+
+        return comparison;
     }
 
     /** For example, all ores will be grouped together, because their item names ("iron_ore") end with "ore". */
-    private static int sortItemStacksByGroup(ItemStack itemStack1, ItemStack itemStack2) {
+    private static int compareItemStacksByReversedNamed(ItemStack itemStack1, ItemStack itemStack2) {
         /*
          * id1 = "block.minecraft.iron_ore"
          * id2 = "block.minecraft.gold_ore"
@@ -295,6 +292,20 @@ public class Server {
         var id2 = itemStack2.getDescriptionId();
         var id1Reversed = new StringBuilder(id1).reverse().toString();
         var id2Reversed = new StringBuilder(id2).reverse().toString();
-        return id1Reversed.compareTo(id2Reversed);
+
+        var comparison = id1Reversed.compareTo(id2Reversed);
+        if (comparison == 0) {
+            // We're comparing item stacks of the same item
+            return compareItemStacksByQuantity(itemStack1, itemStack2);
+        }
+
+        return comparison;
+    }
+
+    /** For example, "64 dirt" will appear before "60 dirt" */
+    private static int compareItemStacksByQuantity(ItemStack itemStack1, ItemStack itemStack2) {
+        var itemCount1 = itemStack1.getCount();
+        var itemCount2 = itemStack2.getCount();
+        return (itemCount1 - itemCount2) * -1;
     }
 }

@@ -1,5 +1,9 @@
 package com.example.examplemod;
 
+import com.example.examplemod.commands.DebugDisableCommand;
+import com.example.examplemod.commands.DebugEnableCommand;
+import com.example.examplemod.commands.SortAlphabeticallyCommand;
+import com.example.examplemod.commands.SortCategoricallyCommand;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
@@ -11,6 +15,7 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
@@ -26,9 +31,27 @@ public class BoopSorterMod {
     public static final Logger LOGGER = LogManager.getLogger();
     public static final String MOD_ID = "boop_sorter_mod";
 
+    private static final State _state = new State();
+
     public BoopSorterMod() {
         MinecraftForge.EVENT_BUS.register(this);
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::commonSetup);
+    }
+
+    public static void enableLogging() {
+        _state.isLoggingEnabled = true;
+    }
+
+    public static void disableLogging() {
+        _state.isLoggingEnabled = false;
+    }
+
+    public static void setSortingByCategory() {
+        _state.shouldSortByCategory = true;
+    }
+
+    public static void setSortingByAlphabet() {
+        _state.shouldSortByCategory = false;
     }
 
     public void commonSetup(final FMLCommonSetupEvent event) {
@@ -39,6 +62,15 @@ public class BoopSorterMod {
     public static class StaticKeyHandler {
         /** `true` if the keyboard's CTRL key is being held down. */
         private static boolean _isCtrlHeldDown = false;
+
+        @SubscribeEvent
+        public static void onCommandsRegister(RegisterCommandsEvent event) {
+            var dispatcher = event.getDispatcher();
+            new DebugEnableCommand(dispatcher);
+            new DebugDisableCommand(dispatcher);
+            new SortAlphabeticallyCommand(dispatcher);
+            new SortCategoricallyCommand(dispatcher);
+        }
 
         @SubscribeEvent
         public static void onKeyboardKeyPressedPostEvent(GuiScreenEvent.KeyboardKeyPressedEvent.Post event) {
@@ -68,41 +100,38 @@ public class BoopSorterMod {
             }
 
             if (didUserClickOnInventorySlot(screen)) {
-                var sortInventoryMessage = new Message(SortTargets.INVENTORY);
+                var sortInventoryMessage = new Message(SortTargets.INVENTORY, _state.shouldSortByCategory);
                 Network.CHANNEL.sendToServer(sortInventoryMessage);
                 return;
             }
 
             if (didUserClickOnContainerSlot(screen)) {
-                var sortContainerMessage = new Message(SortTargets.CONTAINER);
+                var sortContainerMessage = new Message(SortTargets.CONTAINER, _state.shouldSortByCategory);
                 Network.CHANNEL.sendToServer(sortContainerMessage);
                 return;
             }
 
             if (didUserClickOnSupportedModContainerSlot(screen)) {
-                var sortContainerMessage = new Message(SortTargets.CONTAINER);
+                var sortContainerMessage = new Message(SortTargets.CONTAINER, _state.shouldSortByCategory);
                 Network.CHANNEL.sendToServer(sortContainerMessage);
                 return;
             }
         }
 
         private static boolean didUserClickOnInventorySlot(Screen screen) {
-            if (!(screen instanceof InventoryScreen inventoryScreen))
-            {
+            if (!(screen instanceof InventoryScreen inventoryScreen)) {
                 log("Ignoring because MMB not clicked in the inventory screen.");
                 return false;
             }
 
             var slot = inventoryScreen.getSlotUnderMouse();
-            if (slot == null)
-            {
+            if (slot == null) {
                 log("Ignoring because MMB not clicked on an inventory slot.");
                 return false;
             }
 
             var slotIndex = slot.getSlotIndex();
-            if (slotIndex < InventoryMenu.INV_SLOT_START || slotIndex >= InventoryMenu.INV_SLOT_END)
-            {
+            if (slotIndex < InventoryMenu.INV_SLOT_START || slotIndex >= InventoryMenu.INV_SLOT_END) {
                 log("Ignoring because MMB not clicked on a basic inventory slot.");
                 return false;
             }
@@ -111,21 +140,18 @@ public class BoopSorterMod {
         }
 
         private static boolean didUserClickOnContainerSlot(Screen screen) {
-            if (!(screen instanceof ContainerScreen containerScreen))
-            {
+            if (!(screen instanceof ContainerScreen containerScreen)) {
                 log("Ignoring because MMB not clicked in a container screen (ex.: Chest, Shulker box).");
                 return false;
             }
 
             var slot = containerScreen.getSlotUnderMouse();
-            if (slot == null)
-            {
+            if (slot == null) {
                 log("Ignoring because MMB not clicked on a slot.");
                 return false;
             }
 
-            if (!(slot.container instanceof SimpleContainer))
-            {
+            if (!(slot.container instanceof SimpleContainer)) {
                 log("Ignoring because MMB not clicked on a container's slot.");
                 return false;
             }
@@ -199,7 +225,7 @@ public class BoopSorterMod {
 
             var descriptionId = itemStack.getDescriptionId();
             var displayName = itemStack.getDisplayName().getContents();
-            var hoverName = itemStack.getHoverName();
+            var hoverName = itemStack.getHoverName().getContents();
             var enchantmentTags = itemStack.getEnchantmentTags().getAsString();
             var simpleClassName = itemStack.getItem().getClass().getSimpleName();
 
@@ -210,6 +236,7 @@ public class BoopSorterMod {
             }
 
             var message =
+                colorGrayDark + "-----" + "\n" +
                 colorGold + "DESCRIPTION ID"        + "\n" + colorYellow + descriptionId    + "\n\n" +
                 colorGold + "SIMPLE CLASS NAME"     + "\n" + colorYellow + simpleClassName  + "\n\n" +
                 colorGold + "DISPLAY NAME"          + "\n" + colorYellow + displayName      + "\n\n" +
@@ -236,6 +263,7 @@ public class BoopSorterMod {
             final String colorGrayDark = "\u00A78";
 
             var message =
+                colorGrayDark + "-----" + "\n" +
                 colorAquaDark + "SIMPLE NAME"       + "\n" + colorAquaLight + screenSimpleName      + "\n\n" +
                 colorAquaDark + "NAME"              + "\n" + colorAquaLight + screenName            + "\n\n" +
                 colorAquaDark + "TYPE NAME"         + "\n" + colorAquaLight + screenTypeName        + "\n\n" +
