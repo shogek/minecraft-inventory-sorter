@@ -5,7 +5,7 @@ import io.netty.buffer.ByteBuf;
 
 import java.nio.charset.Charset;
 
-public class SortItemsMessage {
+public class SortItemsMessage implements IMessage {
     private static final Charset DEFAULT_CHARSET = Charset.defaultCharset();
     private static final String SEPARATOR = " ";
 

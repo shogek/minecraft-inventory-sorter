@@ -4,6 +4,7 @@ import com.example.examplemod.commands.DebugDisableCommand;
 import com.example.examplemod.commands.DebugEnableCommand;
 import com.example.examplemod.commands.SortAlphabeticallyCommand;
 import com.example.examplemod.commands.SortCategoricallyCommand;
+import com.example.examplemod.messages.IMessage;
 import com.example.examplemod.messages.SortItemsMessage;
 import com.example.examplemod.messages.ReplaceDestroyedItemMessage;
 import net.minecraft.client.Minecraft;
@@ -19,6 +20,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerDestroyItemEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -66,6 +68,7 @@ public class BoopSorterMod {
     public static class StaticKeyHandler {
         /** `true` if the keyboard's CTRL key is being held down. */
         private static boolean _isCtrlHeldDown = false;
+        private static IMessage _queuedMessage = null;
 
         @SubscribeEvent
         public static void onCommandsRegister(RegisterCommandsEvent event) {
@@ -91,6 +94,22 @@ public class BoopSorterMod {
         }
 
         @SubscribeEvent
+        public static void onServerTickEvent(TickEvent.ServerTickEvent event) {
+            if (_queuedMessage == null) {
+                return;
+            }
+
+            // Don't know if this is the phase I should react to (or the tick event for that matter).
+            if (event.phase != TickEvent.Phase.END) {
+                return;
+            }
+
+            log("Dequeuing a message");
+            Network.CHANNEL.sendToServer(_queuedMessage);
+            _queuedMessage = null;
+        }
+
+        @SubscribeEvent
         public static void onPlayerDestroyedItemEvent(PlayerDestroyItemEvent event) {
             var entity = event.getEntity();
             if (!(entity instanceof Player)) {
@@ -100,8 +119,8 @@ public class BoopSorterMod {
             var itemInHand = event.getOriginal();
             var itemInHandId = itemInHand.getDescriptionId();
 
-            var message = new ReplaceDestroyedItemMessage(itemInHandId);
-            Network.CHANNEL.sendToServer(message);
+            log("Queuing a message to replace destroyed item");
+            _queuedMessage = new ReplaceDestroyedItemMessage(itemInHandId);
         }
 
         @SubscribeEvent
