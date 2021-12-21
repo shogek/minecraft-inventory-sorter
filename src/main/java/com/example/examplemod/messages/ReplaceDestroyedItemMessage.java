@@ -4,7 +4,7 @@ import io.netty.buffer.ByteBuf;
 
 import java.nio.charset.Charset;
 
-public class ReplaceDestroyedItemMessage {
+public class ReplaceDestroyedItemMessage implements IMessage {
     private static final Charset DEFAULT_CHARSET = Charset.defaultCharset();
 
     private final String _destroyedItemId;
