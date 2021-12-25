@@ -17,6 +17,11 @@ public class ReplaceDestroyedItemHandler {
                 return;
             }
 
+            var logger = new ChatLogger(ReplaceDestroyedItemHandler.class, message.getIsLoggingEnabled(), player);
+            logger.log("Looking to replace: (" + message.getDestroyedItemId() + ")!");
+
+            var replacementFound = false;
+
             var destroyedItemId = message.getDestroyedItemId();
             var inventory = player.getInventory();
             for (var i = InventoryMenu.INV_SLOT_START; i < InventoryMenu.INV_SLOT_END; i++) {
@@ -27,11 +32,18 @@ public class ReplaceDestroyedItemHandler {
                     continue;
                 }
 
+                logger.logSuccess("Replacement found in slot: (" + i + ")!", true);
+                replacementFound = true;
+
                 var inventoryItemCopy = inventoryItem.copy();
                 inventory.removeItem(inventoryItem);
                 var interactionHand = player.getUsedItemHand();
                 player.setItemInHand(interactionHand, inventoryItemCopy);
                 break;
+            }
+
+            if (!replacementFound) {
+                logger.log("Replacement not found!", true);
             }
         });
 

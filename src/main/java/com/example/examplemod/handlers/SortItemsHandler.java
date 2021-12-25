@@ -1,6 +1,5 @@
 package com.example.examplemod.handlers;
 
-import com.example.examplemod.BoopSorterMod;
 import com.example.examplemod.messages.SortItemsMessage;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
@@ -28,27 +27,28 @@ public class SortItemsHandler {
                 return;
             }
 
+            var logger = new ChatLogger(SortItemsHandler.class, message.getIsLoggingEnabled(), player);
+            logger.log("Trying to sort: (" + message.getSortTarget().name() + ")!");
+            logger.log("Sorting by: (" + (message.shouldSortByCategory() ? "category" : "alphabet") + ")!");
+
             switch (sortTarget) {
-                case INVENTORY -> mergeAndSortInventoryItemStacks(player, shouldSortByCategory);
-                case CONTAINER -> mergeAndSortContainerItemStacks(player, shouldSortByCategory);
-                default -> log("Unknown value of enum 'SortTarget'!");
+                case INVENTORY -> mergeAndSortInventoryItemStacks(player, shouldSortByCategory, logger);
+                case CONTAINER -> mergeAndSortContainerItemStacks(player, shouldSortByCategory, logger);
+                default -> logger.logError("Unknown value of enum 'SortTarget'!", true);
             }
         });
 
         context.setPacketHandled(true);
     }
 
-    private static void log(String message) {
-        BoopSorterMod.LOGGER.info("[Server] " + message);
-    }
-
-    private static void mergeAndSortInventoryItemStacks(ServerPlayer player, boolean shouldSortByCategory) {
+    private static void mergeAndSortInventoryItemStacks(ServerPlayer player, boolean shouldSortByCategory, ChatLogger logger) {
         var inventory = player.getInventory();
-        mergeInventoryItemStacks(inventory);
-        sortInventoryItemStacks(inventory, shouldSortByCategory);
+        mergeInventoryItemStacks(inventory, logger);
+        sortInventoryItemStacks(inventory, shouldSortByCategory, logger);
+        logger.log("Finished merging and sorting inventory's stacks!", true);
     }
 
-    private static void mergeInventoryItemStacks(Inventory inventory) {
+    private static void mergeInventoryItemStacks(Inventory inventory, ChatLogger logger) {
         var airItemId = Items.AIR.getDescriptionId();
         var itemsInInventory = new HashMap<String, List<ItemStack>>();
 
@@ -81,8 +81,18 @@ public class SortItemsHandler {
             itemsInInventory.put(itemId, itemStacks);
         }
 
+        if (itemsInInventory.size() < 1) {
+            logger.log("No stacks to merge!");
+            return;
+        }
+
         // Ignore single stacks because nothing to merge with
         itemsInInventory.entrySet().removeIf((entry) -> entry.getValue().size() <= 1);
+
+        if (itemsInInventory.size() < 1) {
+            logger.log("Only single stacks found (nothing to merge together)!");
+            return;
+        }
 
         itemsInInventory.forEach((itemId, itemStacks) -> {
             int totalItemCount = itemStacks.stream().map(ItemStack::getCount).reduce(Integer::sum).orElse(0);
@@ -104,9 +114,11 @@ public class SortItemsHandler {
                 inventory.removeItem(itemStack);
             }
         });
+
+        logger.logSuccess("Item stacks in inventory merged!");
     }
 
-    private static void sortInventoryItemStacks(Inventory inventory, boolean shouldSortByCategory) {
+    private static void sortInventoryItemStacks(Inventory inventory, boolean shouldSortByCategory, ChatLogger logger) {
         var airItemId = Items.AIR.getDescriptionId();
         var inventoryItems = new ArrayList<ItemStack>();
 
@@ -119,6 +131,11 @@ public class SortItemsHandler {
             }
 
             inventoryItems.add(itemStack);
+        }
+
+        if (inventoryItems.size() == 0) {
+            logger.log("No stacks to sort!");
+            return;
         }
 
         if (shouldSortByCategory) {
@@ -137,18 +154,19 @@ public class SortItemsHandler {
         }
     }
 
-    private static void mergeAndSortContainerItemStacks(ServerPlayer player, boolean shouldSortByCategory) {
+    private static void mergeAndSortContainerItemStacks(ServerPlayer player, boolean shouldSortByCategory, ChatLogger logger) {
         var containerMenu = player.containerMenu;
         if (containerMenu == null) {
-            log("Attempted to sort the container but it was `null`!");
+            logger.logError("Attempted to sort the container but it was `null`!", true);
             return;
         }
 
-        mergeContainerItemStacks(containerMenu);
-        sortContainerItemStacks(containerMenu, shouldSortByCategory);
+        mergeContainerItemStacks(containerMenu, logger);
+        sortContainerItemStacks(containerMenu, shouldSortByCategory, logger);
+        logger.log("Finished merging and sorting container's stacks!", true);
     }
 
-    private static void mergeContainerItemStacks(AbstractContainerMenu containerMenu) {
+    private static void mergeContainerItemStacks(AbstractContainerMenu containerMenu, ChatLogger logger) {
         var containerSlots = containerMenu.slots;
         var containerIndexStart = 0;
         var containerIndexEnd = containerSlots.size() - Inventory.INVENTORY_SIZE;
@@ -187,8 +205,18 @@ public class SortItemsHandler {
             slotsInContainer.put(itemId, slotsWithItem);
         }
 
+        if (slotsInContainer.size() == 0) {
+            logger.log("No stacks to merge!");
+            return;
+        }
+
         // Ignore single stacks because nothing to merge with
         slotsInContainer.entrySet().removeIf((entry) -> entry.getValue().size() <= 1);
+
+        if (slotsInContainer.size() == 0) {
+            logger.log("Only single stacks found (nothing to merge together)!");
+            return;
+        }
 
         slotsInContainer.forEach((itemId, slotsWithItem) -> {
             int totalItemCount = slotsWithItem.stream().map(slot -> slot.getItem().getCount()).reduce(Integer::sum).orElse(0);
@@ -211,9 +239,11 @@ public class SortItemsHandler {
                 itemStack.setCount(0);
             }
         });
+
+        logger.logSuccess("Item stacks in container merged!");
     }
 
-    private static void sortContainerItemStacks(AbstractContainerMenu containerMenu, boolean shouldSortByCategory) {
+    private static void sortContainerItemStacks(AbstractContainerMenu containerMenu, boolean shouldSortByCategory, ChatLogger logger) {
         var containerSlots = containerMenu.slots;
         var containerIndexStart = 0;
         var containerIndexEnd = containerSlots.size() - Inventory.INVENTORY_SIZE;
@@ -235,6 +265,7 @@ public class SortItemsHandler {
 
         // Container is empty - nothing to sort
         if (itemCopies.size() < 1) {
+            logger.log("No stacks to sort!");
             return;
         }
 

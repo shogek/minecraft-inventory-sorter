@@ -39,6 +39,9 @@ public class BoopSorterMod {
 
     private static final State _state = new State();
 
+
+    // TODO: Read more about NBT and "getName()"
+
     public BoopSorterMod() {
         MinecraftForge.EVENT_BUS.register(this);
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::commonSetup);
@@ -120,7 +123,7 @@ public class BoopSorterMod {
             var itemInHandId = itemInHand.getDescriptionId();
 
             log("Queuing a message to replace destroyed item");
-            _queuedMessage = new ReplaceDestroyedItemMessage(itemInHandId);
+            _queuedMessage = new ReplaceDestroyedItemMessage(_state.isLoggingEnabled, itemInHandId);
         }
 
         @SubscribeEvent
@@ -137,19 +140,25 @@ public class BoopSorterMod {
             }
 
             if (didUserClickOnInventorySlot(screen)) {
-                var sortInventoryMessage = new SortItemsMessage(SortTargets.INVENTORY, _state.shouldSortByCategory);
+                var sortInventoryMessage = new SortItemsMessage(
+                    _state.isLoggingEnabled, SortTargets.INVENTORY, _state.shouldSortByCategory
+                );
                 Network.CHANNEL.sendToServer(sortInventoryMessage);
                 return;
             }
 
             if (didUserClickOnContainerSlot(screen)) {
-                var sortContainerMessage = new SortItemsMessage(SortTargets.CONTAINER, _state.shouldSortByCategory);
+                var sortContainerMessage = new SortItemsMessage(
+                    _state.isLoggingEnabled, SortTargets.CONTAINER, _state.shouldSortByCategory
+                );
                 Network.CHANNEL.sendToServer(sortContainerMessage);
                 return;
             }
 
             if (didUserClickOnSupportedModContainerSlot(screen)) {
-                var sortContainerMessage = new SortItemsMessage(SortTargets.CONTAINER, _state.shouldSortByCategory);
+                var sortContainerMessage = new SortItemsMessage(
+                    _state.isLoggingEnabled, SortTargets.CONTAINER, _state.shouldSortByCategory
+                );
                 Network.CHANNEL.sendToServer(sortContainerMessage);
                 return;
             }

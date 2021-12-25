@@ -13,7 +13,7 @@ apply plugin: 'net.minecraftforge.gradle'
 apply plugin: 'eclipse'
 apply plugin: 'maven-publish'
 
-version = '1.17.1-0.0.1'
+version = '1.17.1-1.0.4'
 group = 'com.yourname.boop_sorter_mod' // http://maven.apache.org/guides/mini/guide-naming-conventions.html
 archivesBaseName = 'boop_sorter_mod'
 
@@ -149,7 +149,7 @@ jar {
         attributes([
                 "Specification-Title"     : "Boop Sorter Mod!",
                 "Specification-Vendor"    : "boopsortermodsareus",
-                "Specification-Version"   : "1", // We are version 1 of ourselves
+                "Specification-Version"   : "1.0.4", // We are version 1 of ourselves
                 "Implementation-Title"    : project.name,
                 "Implementation-Version"  : project.jar.archiveVersion,
                 "Implementation-Vendor"   : "boopsortermodsareus",
